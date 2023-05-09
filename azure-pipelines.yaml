@@ -103,14 +103,14 @@ stages:
                 #     WebAppName: "samiazure-APP"
                 #     runtimeStack: "DOTNETCORE|6.0"
                 #     packageForLinux: "$(Pipeline.Workspace)/drop/$(Build.BuildId)-fakerestapi.zip"
-                - task: AzureWebApp@1
-                  displayName: "Deploy to Azure Web App"
-                  inputs:
-                    azureSubscription: "myServiceConnection"
-                    appName: "samiazure-APP"
-                    package: "$(Pipeline.Workspace)/drop/$(Build.BuildId)-fakerestapi.zip"
-                    runtimeStack: "DOTNETCORE|6.0"
-                    linuxFxVersion: "DOTNET|6.0" # Spécifier la version correcte pour LinuxFxVersion
+                # - task: AzureWebApp@1
+                #   displayName: "Deploy to Azure Web App"
+                #   inputs:
+                #     azureSubscription: "myServiceConnection"
+                #     appName: "samiazure-APP"
+                #     package: "$(Pipeline.Workspace)/drop/$(Build.BuildId)-fakerestapi.zip"
+                #     runtimeStack: "DOTNETCORE|6.0"
+                #     linuxFxVersion: "DOTNET|6.0" # Spécifier la version correcte pour LinuxFxVersion
                 - task: AzureRmWebAppDeployment@4
                   inputs:
                     ConnectionType: 'AzureRM'
