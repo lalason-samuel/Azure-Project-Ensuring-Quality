@@ -117,7 +117,7 @@ stages:
                     azureSubscription: 'myServiceConnection'
                     appType: 'webApp'
                     WebAppName: 'sami-fakerestapi'
-                    packageForLinux: '"$(Pipeline.Workspace)/drop/$(Build.BuildId)-fakerestapi.zip"'
+                    packageForLinux: '$(Pipeline.Workspace)/drop/$(Build.BuildId)-fakerestapi.zip'
 
   # - stage: IntegrationTests
   #   displayName: Integration Tests
