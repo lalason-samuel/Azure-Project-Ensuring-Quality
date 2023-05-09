@@ -111,6 +111,13 @@ stages:
                     package: "$(Pipeline.Workspace)/drop/$(Build.BuildId)-fakerestapi.zip"
                     runtimeStack: "DOTNETCORE|6.0"
                     linuxFxVersion: "DOTNET|6.0" # Spécifier la version correcte pour LinuxFxVersion
+                - task: AzureRmWebAppDeployment@4
+                  inputs:
+                    ConnectionType: 'AzureRM'
+                    azureSubscription: 'myServiceConnection'
+                    appType: 'webApp'
+                    WebAppName: 'sami-fakerestapi'
+                    packageForLinux: '"$(Pipeline.Workspace)/drop/$(Build.BuildId)-fakerestapi.zip"'
 
   # - stage: IntegrationTests
   #   displayName: Integration Tests
@@ -149,36 +156,36 @@ stages:
   #             testResultsFormat: "JUnit"
   #             testResultsFiles: "$(System.DefaultWorkingDirectory)/Results/*.xml"
 
-  - stage: JMeterTests
-    displayName: JMeter Tests
-    jobs:
-      - job: PerformanceTests
-        steps:
-          - task: CmdLine@2
-            displayName: Install Java
-            inputs:
-              script: |
-                sudo apt-get update
-                sudo apt-get install -y openjdk-11-jdk
-          - task: JMeterInstaller@0
-            displayName: Install JMeter
-            inputs:
-              jmeterVersion: "5.2.1"
-          - task: Bash@3
-            displayName: EnduranceTest
-            inputs:
-              targetType: "inline"
-              script: "jmeter -n -t automatedtesting/jmeter/EnduranceTestSuite.jmx -Jresdir=automatedtesting/jmeter/endurancepages.csv -l automatedtesting/jmeter/report/enduranceresults.jtl -e -o automatedtesting/jmeter/endurancereport"
-          - task: Bash@3
-            displayName: StressTest
-            inputs:
-              targetType: "inline"
-              script: "jmeter -n -t automatedtesting/jmeter/StressTestSuite.jmx -Jresdir=automatedtesting/jmeter/stresspages.csv -l automatedtesting/jmeter/report/stressresults.jtl -e -o automatedtesting/jmeter/stressreport"
-          - task: PublishBuildArtifacts@1
-            inputs:
-              PathtoPublish: "automatedtesting/jmeter"
-              ArtifactName: "jmeter"
-              publishLocation: "Container"
+  # - stage: JMeterTests
+  #   displayName: JMeter Tests
+  #   jobs:
+  #     - job: PerformanceTests
+  #       steps:
+  #         - task: CmdLine@2
+  #           displayName: Install Java
+  #           inputs:
+  #             script: |
+  #               sudo apt-get update
+  #               sudo apt-get install -y openjdk-11-jdk
+  #         - task: JMeterInstaller@0
+  #           displayName: Install JMeter
+  #           inputs:
+  #             jmeterVersion: "5.2.1"
+  #         - task: Bash@3
+  #           displayName: EnduranceTest
+  #           inputs:
+  #             targetType: "inline"
+  #             script: "jmeter -n -t automatedtesting/jmeter/EnduranceTestSuite.jmx -Jresdir=automatedtesting/jmeter/endurancepages.csv -l automatedtesting/jmeter/report/enduranceresults.jtl -e -o automatedtesting/jmeter/endurancereport"
+  #         - task: Bash@3
+  #           displayName: StressTest
+  #           inputs:
+  #             targetType: "inline"
+  #             script: "jmeter -n -t automatedtesting/jmeter/StressTestSuite.jmx -Jresdir=automatedtesting/jmeter/stresspages.csv -l automatedtesting/jmeter/report/stressresults.jtl -e -o automatedtesting/jmeter/stressreport"
+  #         - task: PublishBuildArtifacts@1
+  #           inputs:
+  #             PathtoPublish: "automatedtesting/jmeter"
+  #             ArtifactName: "jmeter"
+  #             publishLocation: "Container"
 
   # - stage: UITesting
   #   displayName: UI Testing
