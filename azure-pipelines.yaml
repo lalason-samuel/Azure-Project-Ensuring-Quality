@@ -116,7 +116,7 @@ stages:
                     ConnectionType: 'AzureRM'
                     azureSubscription: 'myServiceConnection'
                     appType: 'webApp'
-                    WebAppName: 'sami-fakerestapi'
+                    WebAppName: 'samiazure-FAKERESTAPI'
                     packageForLinux: '$(Pipeline.Workspace)/drop/$(Build.BuildId)-fakerestapi.zip'
 
   # - stage: IntegrationTests
