@@ -10,8 +10,9 @@ cart_url = 'https://www.saucedemo.com/cart.html'
 options = webdriver.ChromeOptions()
 options.add_argument('--headless')
 driver = webdriver.Chrome(".chromedriver",options=options)
+#driver = webdriver.Chrome(options=options)
 
-driver.get(login_url) 
+driver.get(login_url)
 
 user = 'standard_user'
 password = 'secret_sauce'
@@ -47,10 +48,8 @@ assert cart_url in driver.current_url
 #print ('Assert items in cart. ')
 for item in driver.find_elements(By.CLASS_NAME,'inventory_item_name'):
     assert item.text in items_in_cart
-#print ('Asserted items in cart ') 
+#print ('Asserted items in cart ')
 print ('Test Add Items in cart Success.')
-
-
 
 print ('Test: removing items from cart')
 #print ('Navigate to cart and assert items in cart.')
