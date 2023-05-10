@@ -65,45 +65,29 @@ stages:
           #     command: "apply"
           #     workingDirectory: "$(System.DefaultWorkingDirectory)/terraform"
           #     environmentServiceNameAzureRM: "myServiceConnection"
-          - task: UseDotNet@2
-            displayName: 'Install .NET Core SDK'
+          - task: NuGetToolInstaller@1
+            displayName: Install Nuget
+          
+          - task: NuGetCommand@2
             inputs:
-              packageType: 'sdk'
-              version: '6.x'
-              performMultiLevelLookup: true
-              includePreviewVersions: true
+              command: 'restore'
+              restoreSolution: '$(System.DefaultWorkingDirectory)/fakerestapi/*.sln'
+              feedsToUse: 'select'
+          
           - task: DotNetCoreCLI@2
-            displayName: 'Build csproj'
             inputs:
-              command: 'build'
+              command: 'publish'
+              publishWebProjects: false
+              zipAfterPublish: false
               projects: '**/*.csproj'
-              arguments: '--configuration $(buildConfiguration)'
-              workingDirectory: '$(System.DefaultWorkingDirectory)/fakerestapi'
-          # - task: DotNetCoreCLI@2
-          #   displayName: 'Install dotnetsay'
-          #   inputs:
-          #     command: custom
-          #     custom: tool
-          #     arguments: 'install -g dotnetsay'
-          - task: DotNetCoreCLI@2
-            displayName: 'Publish csproj'
-            inputs:
-              command: publish
-              publishWebProjects: True
+              workingDirectory: '$(System.DefaultWorkingDirectory)/fakerestapi/'
               arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)'
-              zipAfterPublish: True
-          - task: ArchiveFiles@2
-            displayName: "Archive FakeRestAPI"
+          - task: PublishBuildArtifacts@1
             inputs:
-              rootFolderOrFile: "$(Build.ArtifactStagingDirectory)"
-              includeRootFolder: false
-              archiveType: "zip"
-              archiveFile: "$(Build.ArtifactStagingDirectory)/$(Build.BuildId)-samifakerestapi.zip"
-              replaceExistingArchive: true
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'drop'
+              publishLocation: 'Container'
 
-          - upload: "$(Build.ArtifactStagingDirectory)/$(Build.BuildId)-samifakerestapi.zip"
-            displayName: "Upload zip"
-            artifact: drop
 
   - stage: Deploy
     displayName: Deploy stage
@@ -127,7 +111,7 @@ stages:
                     azureSubscription: 'myServiceConnection'
                     appType: 'webApp'
                     WebAppName: 'samiazure-FAKERESTAPI'
-                    packageForLinux: '$(Pipeline.Workspace)/drop/$(Build.BuildId)-samifakerestapi.zip'
+                    packageForLinux: '$(Pipeline.Workspace)/drop/*'
 
   # - stage: IntegrationTests
   #   displayName: Integration Tests
