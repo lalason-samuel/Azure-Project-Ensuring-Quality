@@ -9,7 +9,7 @@ cart_url = 'https://www.saucedemo.com/cart.html'
 
 options = webdriver.ChromeOptions()
 options.add_argument('--headless')
-driver = webdriver.Chrome(options=options)
+driver = webdriver.Chrome(".chromedriver",options=options)
 
 driver.get(login_url) 
 
