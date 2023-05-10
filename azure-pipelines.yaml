@@ -11,6 +11,7 @@ trigger:
 pool: myAgentPool
 
 variables:
+  solution: '$(System.DefaultWorkingDirectory)/fakerestapi/*.sln'  
   python.version: "3.7.6"
   # ToDo: Replace the service connection name as used in the DevOps project settings
   azureServiceConnectionId: "myServiceConnection"
@@ -23,203 +24,254 @@ variables:
 
 stages:
   - stage: Build
+    displayName: 'Build stage'
     jobs:
-      - job: BuildInfrastructure
+      - job: BuildJob
+        displayName: 'Build job'
         steps:
-          - script: |
-              echo $(System.DefaultWorkingDirectory)
-            displayName: "Show working directory"
+          - task: UseDotNet@2
+            displayName: 'Install .NET Core SDK'
+            inputs:
+              version: '6.x'
+              includePreviewVersions: true
 
-          # # Install Terraform on the pipeline agent
-          # - task: TerraformInstaller@1
-          #   displayName: "Terrafom installation"
-          #   inputs:
-          #     terraformVersion: "latest"
-          # - task: TerraformTaskV4@4
-          #   displayName: Terraform init
-          #   inputs:
-          #     provider: "azurerm"
-          #     command: "init"
-          #     workingDirectory: "$(System.DefaultWorkingDirectory)/terraform"
-          #     backendServiceArm: "myServiceConnection"
-          #     backendAzureRmResourceGroupName: "Azuredevops"
-          #     backendAzureRmStorageAccountName: "samistrgname"
-          #     backendAzureRmContainerName: "tfstate"
-          #     backendAzureRmKey: "ensuring-quality-releases.tfstate"
-          # - task: TerraformTaskV4@4
-          #   displayName: Terraform validate
-          #   inputs:
-          #     provider: "azurerm"
-          #     command: "validate"
-          # - task: TerraformTaskV4@4
-          #   displayName: Terraform plan
-          #   inputs:
-          #     provider: "azurerm"
-          #     command: "plan"
-          #     workingDirectory: "$(System.DefaultWorkingDirectory)/terraform"
-          #     environmentServiceNameAzureRM: "myServiceConnection"
-          # - task: TerraformTaskV4@4
-          #   displayName: Terraform apply
-          #   inputs:
-          #     provider: "azurerm"
-          #     command: "apply"
-          #     workingDirectory: "$(System.DefaultWorkingDirectory)/terraform"
-          #     environmentServiceNameAzureRM: "myServiceConnection"
-          - task: NuGetToolInstaller@1
-            displayName: Install Nuget
-          
-          - task: NuGetCommand@2
+          - task: DotNetCoreCLI@2
+            displayName: 'Restore dependencies'
             inputs:
               command: 'restore'
-              restoreSolution: '$(System.DefaultWorkingDirectory)/fakerestapi/FakeRESTApi.sln'
-              feedsToUse: 'select'
-          
+              projects: '$(solution)'
+
           - task: DotNetCoreCLI@2
+            displayName: 'Build solution'
+            inputs:
+              command: 'build'
+              projects: '$(solution)'
+              arguments: '--configuration $(buildConfiguration)'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Publish project'
             inputs:
               command: 'publish'
-              publishWebProjects: false
-              zipAfterPublish: false
-              projects: '**/*.csproj'
-              workingDirectory: '$(System.DefaultWorkingDirectory)/fakerestapi/'
-              arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)'
-          - task: PublishBuildArtifacts@1
-            inputs:
-              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-              ArtifactName: 'drop'
-              publishLocation: 'Container'
-
+              publishWebProjects: true
+              projects: '$(solution)'
+              arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
 
   - stage: Deploy
-    displayName: Deploy stage
+    displayName: 'Deploy stage'
     dependsOn: Build
     jobs:
       - deployment: DeployJob
-        pool: myAgentPool
-        environment: "$(environmentName)"
+        displayName: 'Deploy job'
+        environment: 'your-environment-name'
         strategy:
           runOnce:
             deploy:
               steps:
-                - task: DownloadPipelineArtifact@2
+                - task: AzureWebApp@1
+                  displayName: 'Azure Web App Deploy'
                   inputs:
-                    source: "current"
-                    artifact: "drop"
-                    path: "$(Pipeline.Workspace)"
-                - task: AzureRmWebAppDeployment@4
-                  inputs:
-                    ConnectionType: 'AzureRM'
                     azureSubscription: 'myServiceConnection'
-                    appType: 'webApp'
-                    WebAppName: 'samiazure-FAKERESTAPI'
-                    packageForLinux: '$(Pipeline.Workspace)/drop'
+                    appName: 'samiazure-FAKERESTAPI'
+                    package: '$(Pipeline.Workspace)/$(Build.BuildId).zip'
+# stages:
+#   - stage: Build
+#     jobs:
+#       - job: BuildInfrastructure
+#         steps:
+#           - script: |
+#               echo $(System.DefaultWorkingDirectory)
+#             displayName: "Show working directory"
 
-  # - stage: IntegrationTests
-  #   displayName: Integration Tests
-  #   jobs:
-  #     - job: IntegrationTests
-  #       steps:
-  #         - task: CmdLine@2
-  #           displayName: Install Newman
-  #           inputs:
-  #             script: |
-  #               sudo apt update
-  #               sudo apt install nodejs npm -y
-  #               sudo nodejs --version
-  #               sudo npm install -g newman
-  #         - task: CmdLine@2
-  #           displayName: Run Regression Tests
-  #           inputs:
-  #             script: "newman run automatedtesting/postman/RegressionTestSuite.json -e automatedtesting/postman/RegressionTestSuite.Environment.json --delay-request 5000 --bail newman -x --reporters cli,junit --reporter-junit-export Results/RegressionTests.xml"
-  #             workingDirectory: "$(System.DefaultWorkingDirectory)"
-  #           continueOnError: true
-  #         - task: CmdLine@2
-  #           displayName: Run Data Validation Tests
-  #           inputs:
-  #             script: "newman run automatedtesting/postman/DataValidationTestSuite.json -e automatedtesting/postman/DataValidationTestSuite.Environment.json --delay-request 5000 --bail newman -x --reporters cli,junit --reporter-junit-export Results/DataValidationTests.xml"
-  #             workingDirectory: "$(System.DefaultWorkingDirectory)"
-  #           continueOnError: true
-  #         - task: CmdLine@2
-  #           displayName: Show folder after integration test
-  #           inputs:
-  #             script: "ls"
-  #             workingDirectory: "$(System.DefaultWorkingDirectory)"
-  #         - task: PublishTestResults@2
-  #           displayName: Publish Test Reports
-  #           condition: always()
-  #           inputs:
-  #             testResultsFormat: "JUnit"
-  #             testResultsFiles: "$(System.DefaultWorkingDirectory)/Results/*.xml"
+#           # # Install Terraform on the pipeline agent
+#           # - task: TerraformInstaller@1
+#           #   displayName: "Terrafom installation"
+#           #   inputs:
+#           #     terraformVersion: "latest"
+#           # - task: TerraformTaskV4@4
+#           #   displayName: Terraform init
+#           #   inputs:
+#           #     provider: "azurerm"
+#           #     command: "init"
+#           #     workingDirectory: "$(System.DefaultWorkingDirectory)/terraform"
+#           #     backendServiceArm: "myServiceConnection"
+#           #     backendAzureRmResourceGroupName: "Azuredevops"
+#           #     backendAzureRmStorageAccountName: "samistrgname"
+#           #     backendAzureRmContainerName: "tfstate"
+#           #     backendAzureRmKey: "ensuring-quality-releases.tfstate"
+#           # - task: TerraformTaskV4@4
+#           #   displayName: Terraform validate
+#           #   inputs:
+#           #     provider: "azurerm"
+#           #     command: "validate"
+#           # - task: TerraformTaskV4@4
+#           #   displayName: Terraform plan
+#           #   inputs:
+#           #     provider: "azurerm"
+#           #     command: "plan"
+#           #     workingDirectory: "$(System.DefaultWorkingDirectory)/terraform"
+#           #     environmentServiceNameAzureRM: "myServiceConnection"
+#           # - task: TerraformTaskV4@4
+#           #   displayName: Terraform apply
+#           #   inputs:
+#           #     provider: "azurerm"
+#           #     command: "apply"
+#           #     workingDirectory: "$(System.DefaultWorkingDirectory)/terraform"
+#           #     environmentServiceNameAzureRM: "myServiceConnection"
+#           - task: NuGetToolInstaller@1
+#             displayName: Install Nuget
+          
+#           - task: NuGetCommand@2
+#             inputs:
+#               command: 'restore'
+#               restoreSolution: '$(System.DefaultWorkingDirectory)/fakerestapi/FakeRESTApi.sln'
+#               feedsToUse: 'select'
+          
+#           - task: DotNetCoreCLI@2
+#             inputs:
+#               command: 'publish'
+#               publishWebProjects: false
+#               zipAfterPublish: false
+#               projects: '**/*.csproj'
+#               workingDirectory: '$(System.DefaultWorkingDirectory)/fakerestapi/'
+#               arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+#           - task: PublishBuildArtifacts@1
+#             inputs:
+#               PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+#               ArtifactName: 'drop'
+#               publishLocation: 'Container'
 
-  # - stage: JMeterTests
-  #   displayName: JMeter Tests
-  #   jobs:
-  #     - job: PerformanceTests
-  #       steps:
-  #         - task: CmdLine@2
-  #           displayName: Install Java
-  #           inputs:
-  #             script: |
-  #               sudo apt-get update
-  #               sudo apt-get install -y openjdk-11-jdk
-  #         - task: JMeterInstaller@0
-  #           displayName: Install JMeter
-  #           inputs:
-  #             jmeterVersion: "5.2.1"
-  #         - task: Bash@3
-  #           displayName: EnduranceTest
-  #           inputs:
-  #             targetType: "inline"
-  #             script: "jmeter -n -t automatedtesting/jmeter/EnduranceTestSuite.jmx -Jresdir=automatedtesting/jmeter/endurancepages.csv -l automatedtesting/jmeter/report/enduranceresults.jtl -e -o automatedtesting/jmeter/endurancereport"
-  #         - task: Bash@3
-  #           displayName: StressTest
-  #           inputs:
-  #             targetType: "inline"
-  #             script: "jmeter -n -t automatedtesting/jmeter/StressTestSuite.jmx -Jresdir=automatedtesting/jmeter/stresspages.csv -l automatedtesting/jmeter/report/stressresults.jtl -e -o automatedtesting/jmeter/stressreport"
-  #         - task: PublishBuildArtifacts@1
-  #           inputs:
-  #             PathtoPublish: "automatedtesting/jmeter"
-  #             ArtifactName: "jmeter"
-  #             publishLocation: "Container"
 
-  # - stage: UITesting
-  #   displayName: UI Testing
-  #   jobs:
-  #     - job: UITests
-  #       steps:
-  #         - task: CmdLine@2
-  #           displayName: Install Selenium
-  #           inputs:
-  #             targetType: "inline"
-  #             script: |
-  #               #! /bin/bash
+#   - stage: Deploy
+#     displayName: Deploy stage
+#     dependsOn: Build
+#     jobs:
+#       - deployment: DeployJob
+#         pool: myAgentPool
+#         environment: "$(environmentName)"
+#         strategy:
+#           runOnce:
+#             deploy:
+#               steps:
+#                 - task: DownloadPipelineArtifact@2
+#                   inputs:
+#                     source: "current"
+#                     artifact: "drop"
+#                     path: "$(Pipeline.Workspace)"
+#                 - task: AzureRmWebAppDeployment@4
+#                   inputs:
+#                     ConnectionType: 'AzureRM'
+#                     azureSubscription: 'myServiceConnection'
+#                     appType: 'webApp'
+#                     WebAppName: 'samiazure-FAKERESTAPI'
+#                     packageForLinux: '$(Pipeline.Workspace)/drop'
 
-  #               sudo apt-get upgrade -y
-  #               sudo apt-get install python3-pip -y
-  #               sudo apt-get install unzip -y
-  #               sudo apt-get install -y chromium-browser
-  #               pip3 install selenium
+#   # - stage: IntegrationTests
+#   #   displayName: Integration Tests
+#   #   jobs:
+#   #     - job: IntegrationTests
+#   #       steps:
+#   #         - task: CmdLine@2
+#   #           displayName: Install Newman
+#   #           inputs:
+#   #             script: |
+#   #               sudo apt update
+#   #               sudo apt install nodejs npm -y
+#   #               sudo nodejs --version
+#   #               sudo npm install -g newman
+#   #         - task: CmdLine@2
+#   #           displayName: Run Regression Tests
+#   #           inputs:
+#   #             script: "newman run automatedtesting/postman/RegressionTestSuite.json -e automatedtesting/postman/RegressionTestSuite.Environment.json --delay-request 5000 --bail newman -x --reporters cli,junit --reporter-junit-export Results/RegressionTests.xml"
+#   #             workingDirectory: "$(System.DefaultWorkingDirectory)"
+#   #           continueOnError: true
+#   #         - task: CmdLine@2
+#   #           displayName: Run Data Validation Tests
+#   #           inputs:
+#   #             script: "newman run automatedtesting/postman/DataValidationTestSuite.json -e automatedtesting/postman/DataValidationTestSuite.Environment.json --delay-request 5000 --bail newman -x --reporters cli,junit --reporter-junit-export Results/DataValidationTests.xml"
+#   #             workingDirectory: "$(System.DefaultWorkingDirectory)"
+#   #           continueOnError: true
+#   #         - task: CmdLine@2
+#   #           displayName: Show folder after integration test
+#   #           inputs:
+#   #             script: "ls"
+#   #             workingDirectory: "$(System.DefaultWorkingDirectory)"
+#   #         - task: PublishTestResults@2
+#   #           displayName: Publish Test Reports
+#   #           condition: always()
+#   #           inputs:
+#   #             testResultsFormat: "JUnit"
+#   #             testResultsFiles: "$(System.DefaultWorkingDirectory)/Results/*.xml"
 
-  #               # download chrome driver
-  #               FILE=chromedriver_linux64.zip
-  #               if [ -f "$FILE" ]; then
-  #                 echo "$FILE exists."
-  #               else
-  #                 wget https://chromedriver.storage.googleapis.com/2.41/chromedriver_linux64.zip
-  #               fi
-  #               # install chrome driver
-  #               unzip chromedriver_linux64.zip
-  #               sudo mv chromedriver /usr/bin/chromedriver
-  #               sudo chown root:root /usr/bin/chromedriver
-  #               sudo chmod +x /usr/bin/chromedriver
-  #               chromium-browser -version
-  #               chromedriver --version
-  #               # agent log analytics
-  #               wget https://raw.githubusercontent.com/Microsoft/OMS-Agent-for-Linux/master/installer/scripts/onboard_agent.sh && sh onboard_agent.sh -w dbf2bd83-6d47-436b-a499-a2b566def8fe -s MuSR8Ti5MMi0E+9+1NM4NxCxFqJcfLzuGD0EtGhjXo3Vhy/THcSdCf1WyQnkXafD+6DiFjiOAEfJiQh6EbZVeg== -d opinsights.azure.com
-  #         - task: CmdLine@2
-  #           displayName: UI Tests
-  #           inputs:
-  #             targetType: "inline"
-  #             script: |
-  #               sudo mkdir /var/logs
-  #               python3 $(System.DefaultWorkingDirectory)/automatedtesting/selenium/login.py > ui-logs.log
-  #               sudo mv ui-logs.log /var/logs
+#   # - stage: JMeterTests
+#   #   displayName: JMeter Tests
+#   #   jobs:
+#   #     - job: PerformanceTests
+#   #       steps:
+#   #         - task: CmdLine@2
+#   #           displayName: Install Java
+#   #           inputs:
+#   #             script: |
+#   #               sudo apt-get update
+#   #               sudo apt-get install -y openjdk-11-jdk
+#   #         - task: JMeterInstaller@0
+#   #           displayName: Install JMeter
+#   #           inputs:
+#   #             jmeterVersion: "5.2.1"
+#   #         - task: Bash@3
+#   #           displayName: EnduranceTest
+#   #           inputs:
+#   #             targetType: "inline"
+#   #             script: "jmeter -n -t automatedtesting/jmeter/EnduranceTestSuite.jmx -Jresdir=automatedtesting/jmeter/endurancepages.csv -l automatedtesting/jmeter/report/enduranceresults.jtl -e -o automatedtesting/jmeter/endurancereport"
+#   #         - task: Bash@3
+#   #           displayName: StressTest
+#   #           inputs:
+#   #             targetType: "inline"
+#   #             script: "jmeter -n -t automatedtesting/jmeter/StressTestSuite.jmx -Jresdir=automatedtesting/jmeter/stresspages.csv -l automatedtesting/jmeter/report/stressresults.jtl -e -o automatedtesting/jmeter/stressreport"
+#   #         - task: PublishBuildArtifacts@1
+#   #           inputs:
+#   #             PathtoPublish: "automatedtesting/jmeter"
+#   #             ArtifactName: "jmeter"
+#   #             publishLocation: "Container"
+
+#   # - stage: UITesting
+#   #   displayName: UI Testing
+#   #   jobs:
+#   #     - job: UITests
+#   #       steps:
+#   #         - task: CmdLine@2
+#   #           displayName: Install Selenium
+#   #           inputs:
+#   #             targetType: "inline"
+#   #             script: |
+#   #               #! /bin/bash
+
+#   #               sudo apt-get upgrade -y
+#   #               sudo apt-get install python3-pip -y
+#   #               sudo apt-get install unzip -y
+#   #               sudo apt-get install -y chromium-browser
+#   #               pip3 install selenium
+
+#   #               # download chrome driver
+#   #               FILE=chromedriver_linux64.zip
+#   #               if [ -f "$FILE" ]; then
+#   #                 echo "$FILE exists."
+#   #               else
+#   #                 wget https://chromedriver.storage.googleapis.com/2.41/chromedriver_linux64.zip
+#   #               fi
+#   #               # install chrome driver
+#   #               unzip chromedriver_linux64.zip
+#   #               sudo mv chromedriver /usr/bin/chromedriver
+#   #               sudo chown root:root /usr/bin/chromedriver
+#   #               sudo chmod +x /usr/bin/chromedriver
+#   #               chromium-browser -version
+#   #               chromedriver --version
+#   #               # agent log analytics
+#   #               wget https://raw.githubusercontent.com/Microsoft/OMS-Agent-for-Linux/master/installer/scripts/onboard_agent.sh && sh onboard_agent.sh -w dbf2bd83-6d47-436b-a499-a2b566def8fe -s MuSR8Ti5MMi0E+9+1NM4NxCxFqJcfLzuGD0EtGhjXo3Vhy/THcSdCf1WyQnkXafD+6DiFjiOAEfJiQh6EbZVeg== -d opinsights.azure.com
+#   #         - task: CmdLine@2
+#   #           displayName: UI Tests
+#   #           inputs:
+#   #             targetType: "inline"
+#   #             script: |
+#   #               sudo mkdir /var/logs
+#   #               python3 $(System.DefaultWorkingDirectory)/automatedtesting/selenium/login.py > ui-logs.log
+#   #               sudo mv ui-logs.log /var/logs
