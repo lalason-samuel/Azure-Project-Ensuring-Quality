@@ -30,35 +30,35 @@ stages:
     jobs:
       - job: UITests
         steps:
-          - task: CmdLine@2
-            displayName: Install Selenium
-            inputs:
-              targetType: "inline"
-              script: |
-                #! /bin/bash
+          # - task: CmdLine@2
+          #   displayName: Install Selenium
+          #   inputs:
+          #     targetType: "inline"
+          #     script: |
+          #       #! /bin/bash
 
-                sudo apt-get upgrade -y
-                sudo apt-get install python3-pip -y
-                sudo apt-get install unzip -y
-                sudo apt-get install -y chromium-browser
-                pip3 install selenium
+          #       sudo apt-get upgrade -y
+          #       sudo apt-get install python3-pip -y
+          #       sudo apt-get install unzip -y
+          #       sudo apt-get install -y chromium-browser
+          #       pip3 install selenium
 
-                wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-                sudo apt-get -f install
-                sudo dpkg -i google-chrome-stable_current_amd64.deb
-                google-chrome --version
+          #       wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          #       sudo apt-get -f install
+          #       sudo dpkg -i google-chrome-stable_current_amd64.deb
+          #       google-chrome --version
 
-                # download chrome driver
-                FILE=chromedriver_linux64.zip
-                if [ -f "$FILE" ]; then
-                  echo "$FILE exists."
-                else
-                  wget https://chromedriver.storage.googleapis.com/94.0.4606.61/chromedriver_linux64.zip
-                fi
-                # install chrome driver
-                unzip chromedriver_linux64.zip
-                sudo mv chromedriver /usr/bin/chromedriver
-                chromedriver --version
+          #       # download chrome driver
+          #       FILE=chromedriver_linux64.zip
+          #       if [ -f "$FILE" ]; then
+          #         echo "$FILE exists."
+          #       else
+          #         wget https://chromedriver.storage.googleapis.com/94.0.4606.61/chromedriver_linux64.zip
+          #       fi
+          #       # install chrome driver
+          #       unzip chromedriver_linux64.zip
+          #       sudo mv chromedriver /usr/bin/chromedriver
+          #       chromedriver --version
           - task: CmdLine@2
             displayName: UI Tests
             inputs:
