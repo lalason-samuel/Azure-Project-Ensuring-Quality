@@ -111,7 +111,7 @@ stages:
                     azureSubscription: 'myServiceConnection'
                     appType: 'webApp'
                     WebAppName: 'samiazure-FAKERESTAPI'
-                    packageForLinux: '$(Pipeline.Workspace)/drop/*'
+                    packageForLinux: '$(Pipeline.Workspace)/drop/**'
 
   # - stage: IntegrationTests
   #   displayName: Integration Tests
