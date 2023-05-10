@@ -71,7 +71,7 @@ stages:
           - task: NuGetCommand@2
             inputs:
               command: 'restore'
-              restoreSolution: '$(System.DefaultWorkingDirectory)/fakerestapi/*.sln'
+              restoreSolution: '$(System.DefaultWorkingDirectory)/fakerestapi/FakeRESTApi.sln'
               feedsToUse: 'select'
           
           - task: DotNetCoreCLI@2
