@@ -65,19 +65,49 @@ stages:
           #     command: "apply"
           #     workingDirectory: "$(System.DefaultWorkingDirectory)/terraform"
           #     environmentServiceNameAzureRM: "myServiceConnection"
-
-          - task: ArchiveFiles@2
-            displayName: "Archive FakeRestAPI"
+          - task: UseDotNet@2
+            displayName: 'Install .NET Core SDK'
             inputs:
-              rootFolderOrFile: "$(System.DefaultWorkingDirectory)/fakerestapi"
-              includeRootFolder: false
-              archiveType: "zip"
-              archiveFile: "$(Build.ArtifactStagingDirectory)/$(Build.BuildId)-fakerestapi.zip"
-              replaceExistingArchive: true
+              packageType: 'sdk'
+              version: '6.0'
+              performMultiLevelLookup: true
+              includePreviewVersions: true
+          - task: DotNetCoreCLI@2
+            inputs:
+              command: 'build'
+              projects: '**/*.csproj'
+              arguments: '--configuration $(buildConfiguration)'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/fakerestapi'
+          - task: DotNetCoreCLI@2
+            displayName: 'Install dotnetsay'
+            inputs:
+              command: custom
+              custom: tool
+              arguments: 'install -g dotnetsay'
+          - task: DotNetCoreCLI@2
+            inputs:
+              command: publish
+              publishWebProjects: True
+              arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)/$(Build.BuildId)-samifakerestapi.zip'
+              zipAfterPublish: True
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId)-samifakerestapi.zip' 
+              artifactName: 'drop'
 
-          - upload: "$(Build.ArtifactStagingDirectory)/$(Build.BuildId)-fakerestapi.zip"
-            displayName: "Upload zip"
-            artifact: drop
+
+          # - task: ArchiveFiles@2
+          #   displayName: "Archive FakeRestAPI"
+          #   inputs:
+          #     rootFolderOrFile: "$(System.DefaultWorkingDirectory)/fakerestapi"
+          #     includeRootFolder: false
+          #     archiveType: "zip"
+          #     archiveFile: "$(Build.ArtifactStagingDirectory)/$(Build.BuildId)-fakerestapi.zip"
+          #     replaceExistingArchive: true
+
+          # - upload: "$(Build.ArtifactStagingDirectory)/$(Build.BuildId)-fakerestapi.zip"
+          #   displayName: "Upload zip"
+          #   artifact: drop
 
   - stage: Deploy
     displayName: Deploy stage
@@ -95,29 +125,13 @@ stages:
                     source: "current"
                     artifact: "drop"
                     path: "$(Pipeline.Workspace)"
-                # - task: AzureRmWebAppDeployment@4
-                #   inputs:
-                #     ConnectionType: "AzureRM"
-                #     azureSubscription: "myServiceConnection"
-                #     appType: "webAppLinux"
-                #     WebAppName: "samiazure-APP"
-                #     runtimeStack: "DOTNETCORE|6.0"
-                #     packageForLinux: "$(Pipeline.Workspace)/drop/$(Build.BuildId)-fakerestapi.zip"
-                # - task: AzureWebApp@1
-                #   displayName: "Deploy to Azure Web App"
-                #   inputs:
-                #     azureSubscription: "myServiceConnection"
-                #     appName: "samiazure-APP"
-                #     package: "$(Pipeline.Workspace)/drop/$(Build.BuildId)-fakerestapi.zip"
-                #     runtimeStack: "DOTNETCORE|6.0"
-                #     linuxFxVersion: "DOTNET|6.0" # Spécifier la version correcte pour LinuxFxVersion
                 - task: AzureRmWebAppDeployment@4
                   inputs:
                     ConnectionType: 'AzureRM'
                     azureSubscription: 'myServiceConnection'
                     appType: 'webApp'
                     WebAppName: 'samiazure-FAKERESTAPI'
-                    packageForLinux: '$(Pipeline.Workspace)/drop/$(Build.BuildId)-fakerestapi.zip'
+                    packageForLinux: '$(Pipeline.Workspace)/drop/$(Build.BuildId)-samifakerestapi.zip'
 
   # - stage: IntegrationTests
   #   displayName: Integration Tests
